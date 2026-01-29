@@ -27,4 +27,18 @@
   --ifm-color-primary-lighter: #a5f3fc;
   --ifm-color-primary-lightest: #cffafe;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+  --ifm-background-color: #0a0a0a;
+  --ifm-navbar-background-color: #0a0a0a;
+  --ifm-footer-background-color: #0a0a0a;
+}
+
+[data-theme='dark'] .navbar {
+  background-color: var(--ifm-background-color);
+  box-shadow: none;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+[data-theme='dark'] .footer {
+  background-color: var(--ifm-background-color);
+  border-top: 1px solid #1a1a1a;
 }

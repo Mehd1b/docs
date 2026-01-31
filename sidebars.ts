@@ -78,6 +78,16 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'Integration',
+      collapsed: true,
+      items: [
+        'integration/overview',
+        'integration/reference-integrator',
+        'integration/golden-path',
+      ],
+    },
+    {
+      type: 'category',
       label: 'Reference',
       collapsed: true,
       items: [

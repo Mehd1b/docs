@@ -297,3 +297,4 @@ With reproducible builds:
 - [Agent Pack Format](/agent-pack/format) - Manifest structure
 - [Manifest Schema](/agent-pack/manifest-schema) - JSON schema
 - [On-Chain Verifier](/onchain/verifier-overview) - Contract details
+- [Reference Integrator](/integration/reference-integrator) - Complete integration library

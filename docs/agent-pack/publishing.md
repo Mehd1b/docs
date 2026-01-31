@@ -184,6 +184,10 @@ Errors:
 
 When submitting bundles to marketplaces, or when operating a marketplace that accepts agent submissions, a complete verification workflow includes both offline and on-chain verification.
 
+:::tip Reference Integrator
+For a complete integration library that handles bundle loading, verification, proof generation, and on-chain execution, see the [Reference Integrator](/integration/reference-integrator). It provides both a Rust library and CLI tools for marketplace backends.
+:::
+
 ### Complete Verification Script
 
 ```bash
@@ -307,3 +311,4 @@ cargo build -p agent-pack --features risc0
 - [Agent Pack Format](/agent-pack/format) - Manifest structure
 - [Verification](/agent-pack/verification) - Verification details
 - [RISC0 Build Pipeline](/guest-program/risc0-build-pipeline) - Building ELF binaries
+- [Reference Integrator](/integration/reference-integrator) - Complete integration library for marketplaces

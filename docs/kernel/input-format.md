@@ -22,6 +22,12 @@ pub struct KernelInputV1 {
 }
 ```
 
+:::tip Where in the code?
+- **Type definition**: [`kernel-core/src/types.rs:12`](https://github.com/Defiesta/execution-kernel/blob/main/crates/protocol/kernel-core/src/types.rs#L12) — `KernelInputV1` struct
+- **Encoding/decoding**: [`kernel-core/src/codec.rs`](https://github.com/Defiesta/execution-kernel/blob/main/crates/protocol/kernel-core/src/codec.rs) — `CanonicalEncode` and `CanonicalDecode` implementations
+- **Input commitment**: [`kernel-core/src/hash.rs`](https://github.com/Defiesta/execution-kernel/blob/main/crates/protocol/kernel-core/src/hash.rs) — `compute_input_commitment()` function
+:::
+
 ## Binary Layout
 
 Total size: 148 + `opaque_agent_inputs.len()` bytes

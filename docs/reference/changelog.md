@@ -7,9 +7,7 @@ sidebar_position: 3
 
 This document tracks significant changes to the Execution Kernel protocol and implementation.
 
-:::note TODO
-This changelog is a placeholder. Version history will be updated as the protocol evolves.
-:::
+All notable changes to this project will be documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 

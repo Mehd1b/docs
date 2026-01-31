@@ -8,6 +8,18 @@ slug: /
 
 The Execution Kernel is a **consensus-critical, deterministic agent execution framework** for RISC Zero zkVM. It enables verifiable DeFi AI agents that make capital allocation decisions with cryptographic proof of correct execution.
 
+## Quick Navigation
+
+| If you want to... | Start here |
+|-------------------|------------|
+| **Understand how it works** | [Architecture Overview](/architecture/overview) |
+| **Build an agent** | [Writing an Agent](/sdk/writing-an-agent) |
+| **Set up your dev environment** | [Prerequisites](/getting-started/prerequisites) |
+| **Integrate with smart contracts** | [On-Chain Verification](/onchain/verifier-overview) |
+| **Understand the binary formats** | [Input Format](/kernel/input-format) |
+| **Package an agent for deployment** | [Agent Pack Format](/agent-pack/format) |
+| **Audit or review the codebase** | [Repository Map](/reference/repo-map) |
+
 ## What is the Execution Kernel?
 
 The Execution Kernel defines what constitutes a **valid agent execution** through zero-knowledge proofs. Capital is held in on-chain vaults that delegate decision-making to agents—programs that analyze market conditions and produce actions like deposits, withdrawals, or trades.
@@ -65,9 +77,14 @@ The constraint engine validates agent outputs against safety rules:
 | `PROTOCOL_VERSION` | 1 | Wire format version |
 | `KERNEL_VERSION` | 1 | Kernel semantics version |
 | `MAX_AGENT_INPUT_BYTES` | 64,000 | Maximum input size |
+| `MAX_AGENT_OUTPUT_BYTES` | 64,000 | Maximum output size |
 | `MAX_ACTIONS_PER_OUTPUT` | 64 | Maximum actions per execution |
 | `MAX_ACTION_PAYLOAD_BYTES` | 16,384 | Maximum payload per action |
 | `HASH_FUNCTION` | SHA-256 | Commitment hash function |
+
+:::tip Where in the code?
+These constants are defined in [`kernel-core/src/lib.rs`](https://github.com/Defiesta/execution-kernel/blob/main/crates/protocol/kernel-core/src/lib.rs) and [`kernel-core/src/types.rs`](https://github.com/Defiesta/execution-kernel/blob/main/crates/protocol/kernel-core/src/types.rs).
+:::
 
 ## On-Chain Deployment (Sepolia)
 

@@ -9,25 +9,101 @@ This document provides details on integrating with the Execution Kernel contract
 
 ## Contract Interfaces
 
+### IAgentRegistry
+
+```solidity
+interface IAgentRegistry {
+    struct AgentInfo {
+        address author;
+        bytes32 imageId;
+        bytes32 agentCodeHash;
+        string metadataURI;
+        bool exists;
+    }
+
+    /// @notice Compute deterministic agent ID
+    function computeAgentId(address author, bytes32 salt) external pure returns (bytes32);
+
+    /// @notice Register a new agent (permissionless)
+    function register(
+        bytes32 salt,
+        bytes32 imageId,
+        bytes32 agentCodeHash,
+        string calldata metadataURI
+    ) external returns (bytes32 agentId);
+
+    /// @notice Update agent configuration (author only)
+    function update(
+        bytes32 agentId,
+        bytes32 newImageId,
+        bytes32 newAgentCodeHash,
+        string calldata newMetadataURI
+    ) external;
+
+    /// @notice Get agent information
+    function get(bytes32 agentId) external view returns (AgentInfo memory);
+
+    /// @notice Check if agent exists
+    function agentExists(bytes32 agentId) external view returns (bool);
+}
+```
+
+### IVaultFactory
+
+```solidity
+interface IVaultFactory {
+    /// @notice Compute deterministic vault address before deployment
+    function computeVaultAddress(
+        address owner,
+        bytes32 agentId,
+        address asset,
+        bytes32 userSalt
+    ) external view returns (address vault, bytes32 salt);
+
+    /// @notice Deploy a new vault with pinned imageId (author only)
+    function deployVault(
+        bytes32 agentId,
+        address asset,
+        bytes32 userSalt
+    ) external returns (address vault);
+
+    /// @notice Get the registry address
+    function registry() external view returns (address);
+
+    /// @notice Get the verifier address
+    function verifier() external view returns (address);
+
+    /// @notice Check if address is a deployed vault
+    function isDeployedVault(address vault) external view returns (bool);
+}
+```
+
 ### IKernelExecutionVerifier
 
 ```solidity
 interface IKernelExecutionVerifier {
-    /// @notice Verify a kernel execution proof
-    /// @param agentId The agent identifier
-    /// @param journal The kernel journal (209 bytes)
-    /// @param seal The Groth16 proof
-    /// @return True if the proof is valid
-    function verify(
-        bytes32 agentId,
+    struct ParsedJournal {
+        uint32 protocolVersion;
+        uint32 kernelVersion;
+        bytes32 agentId;
+        bytes32 agentCodeHash;
+        bytes32 constraintSetHash;
+        bytes32 inputRoot;
+        uint64 executionNonce;
+        bytes32 inputCommitment;
+        bytes32 actionCommitment;
+        uint8 executionStatus;
+    }
+
+    /// @notice Verify proof and parse journal with caller-provided imageId
+    function verifyAndParseWithImageId(
+        bytes32 expectedImageId,
         bytes calldata journal,
         bytes calldata seal
-    ) external view returns (bool);
+    ) external view returns (ParsedJournal memory);
 
-    /// @notice Get the registered imageId for an agent
-    /// @param agentId The agent identifier
-    /// @return The registered imageId (0 if not registered)
-    function registeredImageIds(bytes32 agentId) external view returns (bytes32);
+    /// @notice Parse journal without verification
+    function parseJournal(bytes calldata journal) external pure returns (ParsedJournal memory);
 }
 ```
 
@@ -36,9 +112,6 @@ interface IKernelExecutionVerifier {
 ```solidity
 interface IKernelVault {
     /// @notice Execute verified agent actions
-    /// @param journal The kernel journal (209 bytes)
-    /// @param seal The Groth16 proof
-    /// @param agentOutput The encoded agent output
     function execute(
         bytes calldata journal,
         bytes calldata seal,
@@ -48,8 +121,14 @@ interface IKernelVault {
     /// @notice Get the last execution nonce
     function lastExecutionNonce() external view returns (uint64);
 
-    /// @notice Get the authorized agent ID
-    function authorizedAgentId() external view returns (bytes32);
+    /// @notice Get the bound agent ID
+    function agentId() external view returns (bytes32);
+
+    /// @notice Get the pinned imageId
+    function trustedImageId() external view returns (bytes32);
+
+    /// @notice Get the verifier contract
+    function verifier() external view returns (IKernelExecutionVerifier);
 }
 ```
 
@@ -182,7 +261,74 @@ library AgentOutputParser {
 }
 ```
 
-## Implementing a Vault
+## Using the Permissionless System
+
+### Registering an Agent
+
+```solidity
+// SPDX-License-Identifier: Apache-2.0
+pragma solidity ^0.8.20;
+
+import "./IAgentRegistry.sol";
+
+contract AgentRegistrar {
+    IAgentRegistry public registry;
+
+    constructor(address _registry) {
+        registry = IAgentRegistry(_registry);
+    }
+
+    function registerMyAgent(
+        bytes32 salt,
+        bytes32 imageId,
+        bytes32 codeHash
+    ) external returns (bytes32 agentId) {
+        // Register agent - agentId is deterministic
+        agentId = registry.register(salt, imageId, codeHash, "ipfs://metadata");
+
+        // agentId = keccak256(abi.encodePacked(msg.sender, salt))
+    }
+
+    function precomputeAgentId(bytes32 salt) external view returns (bytes32) {
+        return registry.computeAgentId(msg.sender, salt);
+    }
+}
+```
+
+### Deploying a Vault
+
+```solidity
+// SPDX-License-Identifier: Apache-2.0
+pragma solidity ^0.8.20;
+
+import "./IVaultFactory.sol";
+
+contract VaultDeployer {
+    IVaultFactory public factory;
+
+    constructor(address _factory) {
+        factory = IVaultFactory(_factory);
+    }
+
+    function deployVaultForAgent(
+        bytes32 agentId,
+        address asset
+    ) external returns (address vault) {
+        // Only the agent author can call this
+        vault = factory.deployVault(agentId, asset, bytes32(0));
+    }
+
+    function precomputeVaultAddress(
+        bytes32 agentId,
+        address asset,
+        bytes32 userSalt
+    ) external view returns (address vault) {
+        (vault, ) = factory.computeVaultAddress(msg.sender, agentId, asset, userSalt);
+    }
+}
+```
+
+## Implementing a Custom Vault
 
 ```solidity
 // SPDX-License-Identifier: Apache-2.0
@@ -197,15 +343,19 @@ contract MyVault {
     using AgentOutputParser for bytes;
 
     IKernelExecutionVerifier public immutable verifier;
-    bytes32 public authorizedAgentId;
+    bytes32 public immutable agentId;
+    bytes32 public immutable trustedImageId;
     uint64 public lastExecutionNonce;
 
-    bytes32 constant EMPTY_OUTPUT_COMMITMENT =
-        0xdf3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119;
-
-    constructor(address _verifier, bytes32 _agentId) {
+    constructor(
+        address _verifier,
+        bytes32 _agentId,
+        bytes32 _trustedImageId
+    ) {
+        require(_trustedImageId != bytes32(0), "Invalid imageId");
         verifier = IKernelExecutionVerifier(_verifier);
-        authorizedAgentId = _agentId;
+        agentId = _agentId;
+        trustedImageId = _trustedImageId;
     }
 
     function execute(
@@ -213,32 +363,25 @@ contract MyVault {
         bytes calldata seal,
         bytes calldata agentOutput
     ) external {
-        // Parse journal
-        KernelOutputParser.ParsedJournal memory parsed = journal.parse();
+        // Verify proof with pinned imageId
+        IKernelExecutionVerifier.ParsedJournal memory parsed =
+            verifier.verifyAndParseWithImageId(trustedImageId, journal, seal);
 
         // Validate versions
         require(parsed.protocolVersion == 1, "Unsupported protocol");
         require(parsed.kernelVersion == 1, "Unsupported kernel");
 
         // Validate agent
-        require(parsed.agentId == authorizedAgentId, "Wrong agent");
+        require(parsed.agentId == agentId, "Wrong agent");
 
-        // Validate nonce
-        require(
-            parsed.executionNonce == lastExecutionNonce + 1,
-            "Invalid nonce"
-        );
+        // Validate nonce (with gap support)
+        require(parsed.executionNonce > lastExecutionNonce, "Invalid nonce");
+        require(parsed.executionNonce <= lastExecutionNonce + 100, "Nonce gap too large");
 
         // Validate status
         require(
             parsed.executionStatus == KernelOutputParser.EXECUTION_STATUS_SUCCESS,
             "Execution failed"
-        );
-
-        // Verify proof
-        require(
-            verifier.verify(parsed.agentId, journal, seal),
-            "Invalid proof"
         );
 
         // Verify action commitment
@@ -259,21 +402,16 @@ contract MyVault {
 
     function _executeAction(AgentOutputParser.ActionV1 memory action) internal {
         if (action.actionType == AgentOutputParser.ACTION_TYPE_CALL) {
-            // Extract address from target (lower 20 bytes)
             address target = address(uint160(uint256(action.target)));
-
-            // Decode payload: value (u64 LE) + calldata
             uint64 value = _readU64LE(action.payload, 0);
             bytes memory callData = action.payload[8:];
 
-            // Execute call
             (bool success, ) = target.call{value: value}(callData);
             require(success, "Call failed");
         }
         // Handle other action types...
     }
 
-    // Receive ETH
     receive() external payable {}
 }
 ```
@@ -287,36 +425,42 @@ contract MyVault {
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import "../src/MyVault.sol";
+import "../src/AgentRegistry.sol";
+import "../src/VaultFactory.sol";
+import "../src/KernelVault.sol";
 
-contract VaultTest is Test {
-    MyVault vault;
+contract IntegrationTest is Test {
+    AgentRegistry registry;
+    VaultFactory factory;
     address verifier = 0x9Ef5bAB590AFdE8036D57b89ccD2947D4E3b1EFA;
-    bytes32 agentId = bytes32(uint256(1));
+
+    address author = address(0x1234);
+    bytes32 imageId = bytes32(uint256(0x5678));
+    bytes32 codeHash = bytes32(uint256(0xABCD));
 
     function setUp() public {
-        vault = new MyVault(verifier, agentId);
-        vm.deal(address(vault), 1 ether);
+        registry = new AgentRegistry();
+        factory = new VaultFactory(address(registry), verifier);
     }
 
-    function testExecuteWithValidProof() public {
-        // Load test data from file or generate
-        bytes memory journal = /* 209 bytes */;
-        bytes memory seal = /* proof data */;
-        bytes memory agentOutput = /* encoded actions */;
+    function testFullFlow() public {
+        // 1. Register agent
+        vm.prank(author);
+        bytes32 agentId = registry.register(
+            bytes32(uint256(1)),
+            imageId,
+            codeHash,
+            "ipfs://test"
+        );
 
-        vault.execute(journal, seal, agentOutput);
+        // 2. Deploy vault
+        vm.prank(author);
+        address vault = factory.deployVault(agentId, address(0), bytes32(0));
 
-        assertEq(vault.lastExecutionNonce(), 1);
-    }
-
-    function testRejectInvalidNonce() public {
-        bytes memory journal = /* with wrong nonce */;
-        bytes memory seal = /* ... */;
-        bytes memory agentOutput = /* ... */;
-
-        vm.expectRevert("Invalid nonce");
-        vault.execute(journal, seal, agentOutput);
+        // 3. Verify vault configuration
+        KernelVault v = KernelVault(payable(vault));
+        assertEq(v.agentId(), agentId);
+        assertEq(v.trustedImageId(), imageId);
     }
 }
 ```
@@ -324,12 +468,23 @@ contract VaultTest is Test {
 ### Using Cast
 
 ```bash
-# Read vault state
-cast call $VAULT "lastExecutionNonce()(uint64)" --rpc-url $RPC_URL
-cast call $VAULT "authorizedAgentId()(bytes32)" --rpc-url $RPC_URL
+# Register agent
+cast send $AGENT_REGISTRY \
+    "register(bytes32,bytes32,bytes32,string)" \
+    0x0000000000000000000000000000000000000000000000000000000000000001 \
+    $IMAGE_ID $CODE_HASH "ipfs://metadata" \
+    --private-key $PRIVATE_KEY --rpc-url $RPC_URL
 
-# Check vault balance
-cast balance $VAULT --rpc-url $RPC_URL
+# Deploy vault
+cast send $VAULT_FACTORY \
+    "deployVault(bytes32,address,bytes32)" \
+    $AGENT_ID $ASSET_ADDRESS 0x0 \
+    --private-key $PRIVATE_KEY --rpc-url $RPC_URL
+
+# Read vault state
+cast call $VAULT "agentId()(bytes32)" --rpc-url $RPC_URL
+cast call $VAULT "trustedImageId()(bytes32)" --rpc-url $RPC_URL
+cast call $VAULT "lastExecutionNonce()(uint64)" --rpc-url $RPC_URL
 ```
 
 ## Events
@@ -356,5 +511,6 @@ event ActionExecuted(
 ## Related
 
 - [Verifier Overview](/onchain/verifier-overview) - Contract architecture
+- [Permissionless System](/onchain/permissionless-system) - Detailed design
 - [Security Considerations](/onchain/security-considerations) - Trust model
 - [Journal Format](/kernel/journal-format) - Journal structure

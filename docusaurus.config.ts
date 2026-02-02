@@ -59,7 +59,7 @@ const config: Config = {
       title: 'Defiesta',
       logo: {
         alt: 'Defiesta Logo',
-        src: 'img/logo.png',
+        src: 'img/logo.svg',
       },
       items: [
         {

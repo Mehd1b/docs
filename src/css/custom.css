@@ -4,41 +4,41 @@
  * work well for content-centric websites.
  */
 
-/* You can override the default Infima variables here. */
+/* Defiesta Color Palette - matching landing page */
 :root {
-  --ifm-color-primary: #0891b2;
-  --ifm-color-primary-dark: #0e7490;
-  --ifm-color-primary-darker: #155e75;
-  --ifm-color-primary-darkest: #164e63;
-  --ifm-color-primary-light: #06b6d4;
-  --ifm-color-primary-lighter: #22d3ee;
-  --ifm-color-primary-lightest: #67e8f9;
+  --ifm-color-primary: #00b8db;
+  --ifm-color-primary-dark: #00a3c4;
+  --ifm-color-primary-darker: #0096b3;
+  --ifm-color-primary-darkest: #007a94;
+  --ifm-color-primary-light: #00d4ff;
+  --ifm-color-primary-lighter: #33ddff;
+  --ifm-color-primary-lightest: #66e5ff;
   --ifm-code-font-size: 95%;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
 }
 
-/* For readability concerns, you should choose a lighter palette in dark mode. */
+/* Dark mode - primary color #00d4ff from landing page */
 [data-theme='dark'] {
-  --ifm-color-primary: #22d3ee;
-  --ifm-color-primary-dark: #06b6d4;
-  --ifm-color-primary-darker: #0891b2;
-  --ifm-color-primary-darkest: #0e7490;
-  --ifm-color-primary-light: #67e8f9;
-  --ifm-color-primary-lighter: #a5f3fc;
-  --ifm-color-primary-lightest: #cffafe;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
-  --ifm-background-color: #0a0a0a;
-  --ifm-navbar-background-color: #0a0a0a;
-  --ifm-footer-background-color: #0a0a0a;
+  --ifm-color-primary: #00d4ff;
+  --ifm-color-primary-dark: #00c4ed;
+  --ifm-color-primary-darker: #00b8db;
+  --ifm-color-primary-darkest: #00a3c4;
+  --ifm-color-primary-light: #33ddff;
+  --ifm-color-primary-lighter: #66e5ff;
+  --ifm-color-primary-lightest: #99eeff;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 212, 255, 0.1);
+  --ifm-background-color: #111118;
+  --ifm-navbar-background-color: #111118;
+  --ifm-footer-background-color: #111118;
 }
 
 [data-theme='dark'] .navbar {
   background-color: var(--ifm-background-color);
   box-shadow: none;
-  border-bottom: 1px solid #1a1a1a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 [data-theme='dark'] .footer {
   background-color: var(--ifm-background-color);
-  border-top: 1px solid #1a1a1a;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
